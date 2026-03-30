@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
 """
 GitHub AI 趋势捕手自动化脚本
-功能：抓取 GitHub Trending Python/AI 项目 → Gemini AI 总结 → Discord Webhook 推送
+功能：抓取 GitHub Trending Python/AI 项目 → Minimax AI 总结 → Discord Webhook 推送
 """
 
 import requests
 import json
+import os
 from datetime import datetime
 
 # ============================================================
-# TODO: 请填写以下配置信息
+# 配置信息
 # ============================================================
 
-# Gemini API Key (从 Google AI Studio 获取: https://aistudio.google.com/app/apikey)
-GEMINI_API_KEY = "AIzaSyB9H96LMFN1q1Bmy0ob-VBhHCNk1rORZPs"
+# Minimax API Key (从 Minimax 控制台获取)
+# 在 GitHub Actions 中使用 secrets.MINIMAX_API_KEY
+# 本地运行时从环境变量 MINIMAX_API_KEY 读取
+MINIMAX_API_KEY = os.environ.get("MINIMAX_API_KEY", "")
 
-# Discord Webhook URL (在 Discord 服务器设置中创建 Webhook)
+# Discord Webhook URL
 DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1488096438721183908/DU0H3LzSSI1t1U_t-xFq_ojs8X6WL3FIe6-5tMe5A8H8d0vW_PzNESGD95bUgGWMTi1n"
 
 # ============================================================
@@ -43,20 +46,23 @@ def get_github_trending_python():
         return []
 
 
-def summarize_with_gemini(projects):
-    """调用 Gemini API 总结项目"""
+def summarize_with_minimax(projects):
+    """调用 Minimax API 总结项目"""
     if not projects:
         return "今日暂无新增 Python AI 项目。"
 
+    if not MINIMAX_API_KEY:
+        return "Minimax API Key 未设置，请检查环境变量 MINIMAX_API_KEY"
+
     # 构建项目列表
     project_list = "\n".join([
-        f"{i+1}. **{p['name']}** - ⭐ {p['stargazers_count']} | 作者: {p['owner']['login']}\n"
-        f"   描述: {p['description'] or '暂无描述'}\n"
-        f"   链接: {p['html_url']}"
+        f"{i+1}. **{p['name']}** - star: {p['stargazers_count']} | author: {p['owner']['login']}\n"
+        f"   desc: {p['description'] or '暂无描述'}\n"
+        f"   url: {p['html_url']}"
         for i, p in enumerate(projects)
     ])
 
-    prompt = f"""你是一个专业的 AI 技术资讯分析师。请分析以下今日 GitHub Trending Python/AI 项目：
+    prompt = f"""你是专业的 AI 技术资讯分析师。请分析以下今日 GitHub Trending Python/AI 项目：
 
 {project_list}
 
@@ -71,17 +77,24 @@ def summarize_with_gemini(projects):
 - 每个项目用 2-3 句话总结"""
 
     try:
-        gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
-        payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"maxOutputTokens": 2048, "temperature": 0.7}
-        }
-        response = requests.post(gemini_url, json=payload, timeout=60)
+        response = requests.post(
+            "https://api.minimax.chat/v1/text/chatcompletion_v2",
+            headers={
+                "Authorization": f"Bearer {MINIMAX_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "MiniMax-Text-01",
+                "max_tokens": 2048,
+                "messages": [{"role": "user", "content": prompt}]
+            },
+            timeout=60
+        )
         response.raise_for_status()
         result = response.json()
-        return result["candidates"][0]["content"]["parts"][0]["text"]
+        return result["choices"][0]["message"]["content"]
     except Exception as e:
-        return f"Gemini API 调用失败: {e}"
+        return f"Minimax API 调用失败: {e}"
 
 
 def send_to_discord(message):
@@ -118,8 +131,8 @@ def main():
     print(f"[成功获取 {len(projects)} 个项目]")
 
     # 2. AI 总结
-    print("\n[正在调用 Gemini AI 进行总结...]")
-    summary = summarize_with_gemini(projects)
+    print("\n[正在调用 Minimax AI 进行总结...]")
+    summary = summarize_with_minimax(projects)
 
     # 3. 构推发送内容
     today = datetime.now().strftime("%Y-%m-%d")
@@ -139,7 +152,7 @@ def main():
 
     # 终端也显示结果
     print("\n" + "=" * 50)
-    print("[Gemini AI 总结结果:]")
+    print("[Minimax AI 总结结果:]")
     print("=" * 50)
     print(summary)
 
