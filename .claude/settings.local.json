@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(python github_ai_bot.py)",
+      "Bash(python fetch_only.py)",
+      "Bash(curl:*)",
+      "Bash(git config:*)"
+    ]
+  }
+}

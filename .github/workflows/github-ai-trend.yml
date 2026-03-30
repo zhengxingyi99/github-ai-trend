@@ -1,0 +1,176 @@
+name: GitHub AI 趋势日报
+
+on:
+  schedule:
+    # 每天早上 9 点（北京时间）运行
+    # UTC 凌晨 1 点 = 北京时间上午 9 点
+    - cron: '0 1 * * *'
+  workflow_dispatch:  # 支持手动触发
+
+jobs:
+  fetch-and-analyze:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出版本库
+        uses: actions/checkout@v4
+
+      - name: 设置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安装依赖
+        run: |
+          pip install requests
+
+      - name: 抓取 GitHub Trending 数据
+        run: |
+          python -c "
+import requests
+import json
+from datetime import datetime
+
+url = 'https://api.github.com/search/repositories'
+params = {
+    'q': 'language:python created:>=' + datetime.now().strftime('%Y-%m-%d'),
+    'sort': 'stars',
+    'order': 'desc',
+    'per_page': 5
+}
+headers = {'Accept': 'application/vnd.github.v3+json'}
+
+response = requests.get(url, params=params, headers=headers, timeout=30)
+response.raise_for_status()
+projects = response.json().get('items', [])
+
+result = {
+    'fetch_time': datetime.now().isoformat(),
+    'count': len(projects),
+    'projects': []
+}
+
+for p in projects:
+    result['projects'].append({
+        'name': p['full_name'],
+        'description': p['description'] or '无描述',
+        'stars': p['stargazers_count'],
+        'forks': p['forks_count'],
+        'url': p['html_url']
+    })
+
+with open('trending.json', 'w', encoding='utf-8') as f:
+    json.dump(result, f, ensure_ascii=False, indent=2)
+
+print(f'成功抓取 {len(projects)} 个项目')
+"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 读取项目数据
+        id: read-data
+        run: |
+          echo "data=$(cat trending.json)" >> $GITHUB_OUTPUT
+
+      - name: 调用 Minimax AI 分析
+        id: analyze
+        run: |
+          python -c "
+import requests
+import json
+
+# 读取 trending.json
+with open('trending.json', 'r', encoding='utf-8') as f:
+    data = json.load(f)
+
+projects = data['projects']
+project_list = '\n'.join([
+    f\"{i+1}. **{p['name']}** - 描述: {p['description']} (star: {p['stars']})\"
+    for i, p in enumerate(projects)
+])
+
+prompt = f'''你是专业的 AI 技术分析师。请分析以下今日 GitHub Trending Python/AI 项目：
+
+{project_list}
+
+请对每个项目用中文总结：
+1. 核心亮点是什么？
+2. 对普通 AI 玩家有什么具体帮助？
+
+格式要求：
+- 简洁有力，突出重点
+- 用普通人能理解的语言
+- 每个项目 2-3 句话'''
+
+import os
+# 调用 Minimax API
+minimax_key = os.environ.get('MINIMAX_API_KEY')
+if not minimax_key:
+    print('MINIMAX_API_KEY 未设置')
+    exit(1)
+
+response = requests.post(
+    'https://api.minimax.chat/v1/text/chatcompletion_v2',
+    headers={
+        'Authorization': f'Bearer {minimax_key}',
+        'Content-Type': 'application/json'
+    },
+    json={
+        'model': 'MiniMax-Text-01',
+        'max_tokens': 2048,
+        'messages': [
+            {'role': 'user', 'content': prompt}
+        ]
+    },
+    timeout=60
+)
+
+if response.status_code == 200:
+    result = response.json()
+    summary = result['choices'][0]['message']['content']
+    with open('summary.txt', 'w', encoding='utf-8') as f:
+        f.write(summary)
+    print('Minimax 分析完成')
+else:
+    print(f'Minimax API 错误: {response.status_code}')
+    print(response.text)
+    exit(1)
+"
+        env:
+          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+
+      - name: 推送 Discord
+        run: |
+          python -c "
+import requests
+import json
+from datetime import datetime
+
+# 读取总结
+with open('summary.txt', 'r', encoding='utf-8') as f:
+    summary = f.read()
+
+# 读取项目数据
+with open('trending.json', 'r', encoding='utf-8') as f:
+    data = json.load(f)
+
+# 构建 Discord 消息
+today = datetime.now().strftime('%Y-%m-%d')
+message = f'''**GitHub AI 趋势日报** | {today}
+
+{summary}
+
+---
+数据来源: GitHub Trending'''
+
+webhook = 'https://discord.com/api/webhooks/1488096438721183908/DU0H3LzSSI1t1U_t-xFq_ojs8X6WL3FIe6-5tMe5A8H8d0vW_PzNESGD95bUgGWMTi1n'
+
+payload = {'content': message, 'username': 'GitHub AI 趋势捕手'}
+response = requests.post(webhook, json=payload)
+
+if response.status_code == 204:
+    print('Discord 推送成功')
+else:
+    print(f'Discord 推送失败: {response.status_code}')
+    exit(1)
+"

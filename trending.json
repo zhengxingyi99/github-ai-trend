@@ -1,0 +1,51 @@
+{
+  "fetch_time": "2026-03-30T16:56:26.882574",
+  "count": 5,
+  "projects": [
+    {
+      "name": "WillowHe/EvoOpt_oppangu_optimization_model",
+      "description": "A set of solutions is provided, leveraging Openpangu - 7B as the base model for fine - tuning and application of large language models (LLMs) in operations research optimization tasks. ",
+      "stars": 27,
+      "forks": 0,
+      "language": "Python",
+      "url": "https://github.com/WillowHe/EvoOpt_oppangu_optimization_model",
+      "author": "WillowHe"
+    },
+    {
+      "name": "toby-bridges/api-relay-audit",
+      "description": "Security audit tool for third-party AI API relay/proxy services. Detects hidden prompt injection, prompt leakage, instruction override, and context truncation.",
+      "stars": 26,
+      "forks": 3,
+      "language": "Python",
+      "url": "https://github.com/toby-bridges/api-relay-audit",
+      "author": "toby-bridges"
+    },
+    {
+      "name": "Gokuld102/ai-traffic-signal-optimization",
+      "description": "AI-based smart traffic signal optimization using YOLO, OpenCV, and Machine Learning",
+      "stars": 24,
+      "forks": 0,
+      "language": "Python",
+      "url": "https://github.com/Gokuld102/ai-traffic-signal-optimization",
+      "author": "Gokuld102"
+    },
+    {
+      "name": "Naveennaveentamil/ai-traffic-signal-optimization",
+      "description": "无描述",
+      "stars": 24,
+      "forks": 1,
+      "language": "Python",
+      "url": "https://github.com/Naveennaveentamil/ai-traffic-signal-optimization",
+      "author": "Naveennaveentamil"
+    },
+    {
+      "name": "SakthiVarunishaa07/Expense-Tracker",
+      "description": "Simple Python Expenses Tracker",
+      "stars": 21,
+      "forks": 0,
+      "language": "Python",
+      "url": "https://github.com/SakthiVarunishaa07/Expense-Tracker",
+      "author": "SakthiVarunishaa07"
+    }
+  ]
+}
